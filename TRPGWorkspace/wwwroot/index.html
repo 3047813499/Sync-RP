@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
-    <title>TRPG 实时协作工作台 - v1.3.2</title>
+    <title>TRPG 实时协作工作台 - v1.3.10 Static Nav & Embedded Button</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.1, maximum-scale=5.0">
     <style>
         /* --- 1. 基础全局样式 --- */
@@ -11,37 +11,42 @@
             background: #f4f7f9;
             font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif;
             color: #333;
-            min-width: 1000px;
             overflow-x: auto;
             -webkit-text-size-adjust: 100%;
         }
 
         :root {
-            --grid-layout: repeat(3, 1fr) 50px;
+            --grid-layout: repeat(3, minmax(280px, 1fr)) 50px;
             --row-even-bg: #ffffff;
             --row-odd-bg: #edf0f3;
             --border-color: #d1d9e0;
         }
 
-        /* --- 2. 顶部导航栏 --- */
+        /* --- 2. 顶部导航栏 (修改：不再悬浮) --- */
         .top-nav {
             display: grid;
             grid-template-columns: var(--grid-layout);
+            column-gap: 20px;
             background: #212529;
             color: white;
-            position: sticky;
-            top: 0;
+            /* 修改点：删除了 position: sticky; top: 0; */
+            /* 现在它只是普通的一行，会随页面滚动而移出视野 */
+            position: relative;
             z-index: 100;
             padding: 0 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.15);
             align-items: center;
+            width: max-content;
+            min-width: 100%;
+            box-sizing: border-box;
+            height: 60px;
         }
 
         .nav-item {
-            padding: 12px 0;
             display: flex;
             justify-content: center;
-            padding-right: 20px;
+            align-items: center;
+            width: 100%;
         }
 
         .column-title-input {
@@ -50,13 +55,14 @@
             color: #fff;
             font-size: 14px;
             font-weight: bold;
-            width: 85%;
+            width: 100%;
             padding: 8px 12px;
             border-radius: 4px;
             outline: none;
             text-align: center;
             letter-spacing: 1px;
             transition: all 0.2s;
+            box-sizing: border-box;
         }
 
         /* --- 3. 省略号菜单 --- */
@@ -65,6 +71,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            height: 100%;
         }
 
         .ellipsis-btn {
@@ -80,7 +87,7 @@
         .dropdown-menu {
             display: none;
             position: absolute;
-            top: 45px;
+            top: 50px;
             right: 0;
             background: white;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
@@ -105,8 +112,6 @@
                     background: #f8f9fa;
                 }
 
-        /* 注意：删除了 danger-btn 的样式，因为它已经不需要了 */
-
         /* --- 4. 核心布局网格 --- */
         .main-workspace {
             display: grid;
@@ -114,6 +119,9 @@
             column-gap: 20px;
             padding: 20px;
             align-items: stretch;
+            width: max-content;
+            min-width: 100%;
+            box-sizing: border-box;
         }
 
         /* --- 5. 打字小格子样式 --- */
@@ -139,7 +147,7 @@
             border: none;
             outline: none;
             resize: none;
-            font-size: 15px;
+            font-size: 16px;
             line-height: 1.8;
             letter-spacing: 0.5px;
             background: transparent;
@@ -175,18 +183,20 @@
             background-color: var(--row-even-bg);
         }
 
-        /* --- 7. 底部全局控制按钮 --- */
+        /* --- 7. 底部全局控制按钮 (嵌入表格版) --- */
+        /* 这个容器现在是 grid 的一个子元素 */
         .global-row-controls {
-            width: 100%;
+            /* 核心修改：让它跨越所有列（从第一列到最后一列） */
+            grid-column: 1 / -1;
+            width: 100%; /* 占满 Grid 给它的空间 */
             padding: 30px 0 100px 0;
             display: flex;
             justify-content: center;
         }
 
         .add-row-btn {
-            width: 80%;
-            max-width: 900px;
-            height: 55px;
+            width: 100%; /* 撑满这一行 */
+            height: 60px;
             background: #ffffff;
             border: 2px dashed #d1d9e0;
             border-radius: 8px;
@@ -237,12 +247,7 @@
         </div>
     </div>
 
-    <div class="main-workspace" id="main-grid"></div>
-
-    <div class="global-row-controls">
-        <button class="add-row-btn" onclick="askAddRow()">
-            <span>+</span> 批量添加 10 行剧情 (同步所有列)
-        </button>
+    <div class="main-workspace" id="main-grid">
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
@@ -276,8 +281,10 @@
             columnCounts = {};
             renderedRows.clear();
 
-            document.documentElement.style.setProperty('--grid-layout', `repeat(${columns.length}, 1fr) 50px`);
+            // 布局：280px 宽列
+            document.documentElement.style.setProperty('--grid-layout', `repeat(${columns.length}, minmax(280px, 1fr)) 50px`);
 
+            // 导航栏处理
             nav.querySelectorAll('.nav-item').forEach(el => el.remove());
             columns.forEach(col => {
                 columnCounts[col.id] = 0;
@@ -287,11 +294,32 @@
                 nav.insertBefore(item, menuContainer);
             });
 
+            // 渲染格子
             boxes.forEach(b => {
                 const colIndex = columns.findIndex(c => c.id === b.columnId) + 1;
                 if (colIndex > 0) renderBox(b.columnId, b.id, b.content, colIndex);
             });
+
+            // --- 核心修改：加载完格子后，把大按钮作为 Grid 的最后一个元素加上去 ---
+            renderGlobalButton();
         });
+
+        function renderGlobalButton() {
+            const grid = document.getElementById("main-grid");
+
+            // 创建按钮容器
+            const container = document.createElement("div");
+            container.className = "global-row-controls";
+
+            // 创建按钮
+            const btn = document.createElement("button");
+            btn.className = "add-row-btn";
+            btn.onclick = askAddRow;
+            btn.innerHTML = "<span>+</span> 批量添加 10 行剧情 (同步所有列)";
+
+            container.appendChild(btn);
+            grid.appendChild(container);
+        }
 
         function renderBox(columnId, boxId, content, colIndex) {
             const grid = document.getElementById("main-grid");
@@ -337,13 +365,9 @@
             el.style.height = el.scrollHeight + 'px';
         }
 
-        // --- 指令发送 ---
         function askAddColumn() { connection.invoke("AddColumn"); }
         function askRemoveColumn() { if (confirm("确定删除最后一列吗？")) connection.invoke("RemoveLastColumn"); }
-
-        function askAddRow() {
-            connection.invoke("RequestAddRow").catch(err => console.error(err));
-        }
+        function askAddRow() { connection.invoke("RequestAddRow").catch(err => console.error(err)); }
 
         function onTyping(boxId) {
             const val = document.getElementById(boxId).value;
@@ -355,9 +379,6 @@
             connection.invoke("UpdateColumnTitle", columnId, val);
         }
 
-        // 修改点：删除了 askClearAll 函数
-
-        // --- 信号监听 ---
         connection.on("OnLayoutUpdated", () => location.reload());
         connection.on("OnTextUpdated", (boxId, content) => {
             const el = document.getElementById(boxId);
