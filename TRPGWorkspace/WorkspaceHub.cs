@@ -16,6 +16,8 @@ public class WorkspaceHub : Hub
 		await base.OnConnectedAsync();
 	}
 
+
+
 	// 2. 增加格子 (修复点：添加后通知所有人更新布局)
 	public async Task RequestAddBox(string columnId, string boxId)
 	{
@@ -96,4 +98,36 @@ public class WorkspaceHub : Hub
 		await _db.SaveChangesAsync();
 		await Clients.All.SendAsync("OnLayoutUpdated");
 	}
+
+	// v1.3: 取消单个格子增加，改为同步添加一行
+	// v1.3.2: 一次性添加 10 行
+	public async Task RequestAddRow()
+	{
+		// 1. 获取当前所有列
+		var columns = await _db.Columns.OrderBy(c => c.Order).ToListAsync();
+
+		if (columns.Count == 0) return;
+
+		// 2. 外层循环 10 次（生成 10 行）
+		for (int i = 0; i < 10; i++)
+		{
+			// 内层循环遍历每一列
+			foreach (var col in columns)
+			{
+				var newBox = new WorkspaceBox
+				{
+					Id = Guid.NewGuid().ToString(),
+					ColumnId = col.Id,
+					Content = ""
+				};
+				_db.Boxes.Add(newBox);
+			}
+		}
+
+		// 3. 统一保存并通知
+		await _db.SaveChangesAsync();
+		await Clients.All.SendAsync("OnLayoutUpdated");
+	}
+
+
 }
