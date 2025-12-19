@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <title>TRPG 实时协作工作台 - Beta 1.6.4</title>
+    <style>
+        /* --- 1. 基础全局样式 --- */
+        body { 
+            margin: 0; 
+            background: #f4f7f9; 
+            font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif; 
+            color: #333;
+        }
+
+        :root {
+            --grid-layout: repeat(3, 1fr) 120px;
+            --row-even-bg: #ffffff; 
+            --row-odd-bg: #edf0f3;  
+            --border-color: #d1d9e0; 
+        }
+
+        /* --- 2. 顶部导航栏 --- */
+        .top-nav { 
+            display: grid; 
+            grid-template-columns: var(--grid-layout);
+            background: #212529; 
+            color: white; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100;
+            padding: 0 20px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            align-items: center;
+        }
+        .nav-item { 
+            padding: 12px 0; 
+            display: flex;
+            justify-content: center;
+            padding-right: 20px;
+        }
+        .column-title-input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            width: 85%;
+            padding: 8px 12px;
+            border-radius: 4px;
+            outline: none;
+            text-align: center;
+            /* 标题也稍微加一点点字间距 */
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        /* --- 3. 核心布局网格 --- */
+        .main-workspace {
+            display: grid;
+            grid-template-columns: var(--grid-layout);
+            column-gap: 20px; 
+            padding: 20px;
+            align-items: stretch;
+        }
+
+        /* --- 4. 打字小格子样式 --- */
+        .box-wrapper {
+            padding: 22px 18px; /* 增加呼吸感 */
+            position: relative;
+            border: 1px solid var(--border-color);
+            margin-bottom: -1px; 
+            transition: background 0.2s;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .row-even { background-color: var(--row-even-bg); }
+        .row-odd  { background-color: var(--row-odd-bg); }
+
+        textarea {
+            width: 100%;
+            border: none;
+            outline: none;
+            resize: none;
+            font-size: 15px;
+            /* 【核心修改】增加行间距和字间距 */
+            line-height: 1.8;      /* 增加到 1.8，行间更舒展 */
+            letter-spacing: 0.5px; /* 增加字符间距 */
+            background: transparent;
+            overflow: hidden;
+            color: #2c3e50;
+            font-family: inherit;
+        }
+
+        /* --- 5. 右侧竖排身份标签 --- */
+        .row-label {
+            grid-column: 4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-weight: bold;
+            letter-spacing: 6px;
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+            border-left: none;
+            margin-bottom: -1px;
+            user-select: none;
+        }
+        .label-keeper { color: #546e7a; background-color: var(--row-odd-bg); }
+        .label-investigator { color: #90a4ae; background-color: var(--row-even-bg); }
+
+        /* --- 6. 底部加号 --- */
+        .add-box-trigger {
+            background: rgba(0,0,0,0.04);
+            border: 2px dashed #b0bec5;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            color: #78909c;
+            font-size: 20px;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        .add-box-trigger:hover {
+            border-color: #2ecc71;
+            color: #2ecc71;
+            background: #fff;
+        }
+
+        /* --- 7. 辅助功能 --- */
+        .del-btn {
+            position: absolute; right: 5px; top: 2px;
+            background: none; border: none; color: #cfd8dc;
+            cursor: pointer; font-size: 18px;
+            opacity: 0;
+        }
+        .box-wrapper:hover .del-btn { opacity: 1; }
+        .del-btn:hover { color: #e74c3c !important; }
+
+        .clear-btn {
+            background: #37474f; color: #eceff1; border: none;
+            padding: 8px; border-radius: 4px; cursor: pointer; width: 100%;
+            font-size: 11px; font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-nav">
+        <div class="nav-item"><input type="text" class="column-title-input" id="title-col-1" value="剧情/世界观" oninput="onTitleChange('col-1')"></div>
+        <div class="nav-item"><input type="text" class="column-title-input" id="title-col-2" value="人物/状态" oninput="onTitleChange('col-2')"></div>
+        <div class="nav-item"><input type="text" class="column-title-input" id="title-col-3" value="记录/备忘" oninput="onTitleChange('col-3')"></div>
+        <div style="display:flex; justify-content:center; padding:0 10px;"><button class="clear-btn" onclick="askClearAll()">清空全部数据</button></div>
+    </div>
+
+    <div class="main-workspace" id="main-grid"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/workspaceHub")
+            .withAutomaticReconnect()
+            .build();
+
+        let columnCounts = { "col-1": 0, "col-2": 0, "col-3": 0 };
+
+        function renderBox(columnId, boxId, content = "") {
+            const grid = document.getElementById("main-grid");
+            columnCounts[columnId]++;
+            const rowIndex = columnCounts[columnId]; 
+            const colIndex = columnId === 'col-1' ? 1 : (columnId === 'col-2' ? 2 : 3);
+
+            updateRowLabel(rowIndex);
+
+            const wrapper = document.createElement("div");
+            wrapper.className = `box-wrapper ${rowIndex % 2 !== 0 ? 'row-odd' : 'row-even'}`;
+            wrapper.style.gridColumn = colIndex;
+            wrapper.style.gridRow = rowIndex;
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "del-btn";
+            delBtn.innerHTML = "&times;";
+            delBtn.onclick = () => { if(confirm("删除？")) connection.invoke("RequestDeleteBox", boxId); };
+
+            const textarea = document.createElement("textarea");
+            textarea.id = boxId;
+            textarea.value = content;
+            textarea.placeholder = "...";
+            textarea.oninput = function() { autoResize(this); onTyping(boxId); };
+
+            wrapper.appendChild(delBtn);
+            wrapper.appendChild(textarea);
+            grid.appendChild(wrapper);
+
+            updateAddTrigger(columnId, colIndex, rowIndex + 1);
+            setTimeout(() => autoResize(textarea), 50);
+        }
+
+        function updateRowLabel(rowIndex) {
+            const labelId = "label-row-" + rowIndex;
+            let label = document.getElementById(labelId);
+            if (!label) {
+                label = document.createElement("div");
+                label.id = labelId;
+                const isKeeper = rowIndex % 2 !== 0;
+                label.className = `row-label ${isKeeper ? 'label-keeper' : 'label-investigator'}`;
+                label.innerText = isKeeper ? "守秘人" : "调查员";
+                label.style.gridRow = rowIndex;
+                document.getElementById("main-grid").appendChild(label);
+            }
+        }
+
+        function updateAddTrigger(columnId, colIndex, nextRow) {
+            let trigger = document.getElementById("trigger-" + columnId);
+            if (!trigger) {
+                trigger = document.createElement("div");
+                trigger.id = "trigger-" + columnId;
+                trigger.className = "add-box-trigger";
+                trigger.innerText = "+";
+                trigger.onclick = () => askAddBox(columnId);
+                document.getElementById("main-grid").appendChild(trigger);
+            }
+            trigger.style.gridColumn = colIndex;
+            trigger.style.gridRow = nextRow;
+        }
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+
+        connection.on("LoadExistingBoxes", (boxes, titles) => {
+            clearLocalWorkspace();
+            if (titles) {
+                titles.forEach(t => {
+                    const input = document.getElementById("title-" + t.id);
+                    if (input) input.value = t.title;
+                });
+            }
+            boxes.sort((a,b) => a.id.localeCompare(b.id)).forEach(b => renderBox(b.columnId, b.id, b.content));
+        });
+
+        connection.on("OnBoxAdded", (columnId, boxId) => renderBox(columnId, boxId, ""));
+        connection.on("OnBoxDeleted", (boxId) => location.reload());
+        connection.on("OnTextUpdated", (boxId, content) => {
+            const el = document.getElementById(boxId);
+            if (el) { el.value = content; autoResize(el); }
+        });
+        connection.on("OnTitleUpdated", (columnId, newTitle) => {
+            const input = document.getElementById("title-" + columnId);
+            if (input) input.value = newTitle;
+        });
+        connection.on("OnWorkspaceCleared", () => location.reload());
+
+        function clearLocalWorkspace() {
+            columnCounts = { "col-1": 0, "col-2": 0, "col-3": 0 };
+            document.getElementById("main-grid").innerHTML = "";
+            updateAddTrigger('col-1', 1, 1); updateAddTrigger('col-2', 2, 1); updateAddTrigger('col-3', 3, 1);
+        }
+
+        function askAddBox(columnId) {
+            const id = "box_" + Date.now();
+            connection.invoke("RequestAddBox", columnId, id);
+        }
+        function onTyping(boxId) {
+            const val = document.getElementById(boxId).value;
+            connection.invoke("SendTextUpdate", boxId, val);
+        }
+        function onTitleChange(columnId) {
+            const newTitle = document.getElementById("title-" + columnId).value;
+            connection.invoke("UpdateColumnTitle", columnId, newTitle);
+        }
+        function askClearAll() {
+            if (confirm("清空全部？")) connection.invoke("ClearAllBoxes");
+        }
+
+        connection.start().then(() => {
+            updateAddTrigger('col-1', 1, 1);
+            updateAddTrigger('col-2', 2, 1);
+            updateAddTrigger('col-3', 3, 1);
+        });
+    </script>
+</body>
+</html>
