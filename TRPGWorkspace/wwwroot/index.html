@@ -263,20 +263,85 @@
         function exportImage() {
             closeMenu();
             const btn = document.querySelector('.ellipsis-btn');
+            const originalText = btn.innerText;
             btn.innerText = '⏳';
 
+            // 1. 在截图前，先获取原页面所有 textarea 的“真实值”和“真实宽度”
+            // 因为 html2canvas 的克隆过程有时会丢失用户刚刚打的字
+            const originalTextareas = Array.from(document.querySelectorAll('textarea'));
+            const stateMap = originalTextareas.map(t => ({
+                value: t.value,
+                width: t.getBoundingClientRect().width, // 获取精确像素宽度
+                computedStyle: window.getComputedStyle(t) // 获取精确样式
+            }));
+
+            // 获取整个页面的尺寸
+            const fullHeight = document.body.scrollHeight;
+            const fullWidth = document.body.scrollWidth;
+
             html2canvas(document.body, {
-                scrollX: 0, scrollY: 0,
-                windowWidth: document.body.scrollWidth,
-                windowHeight: document.body.scrollHeight,
+                // 关键：在克隆阶段进行手术
+                onclone: (clonedDoc) => {
+                    // 找到克隆页面里的所有 textarea
+                    const clonedTextareas = Array.from(clonedDoc.querySelectorAll('textarea'));
+
+                    // 遍历每一个克隆的输入框
+                    clonedTextareas.forEach((clonedTextarea, index) => {
+                        const state = stateMap[index]; // 找到它在原页面的“真身”数据
+
+                        // 创建一个 div 来替身
+                        const div = clonedDoc.createElement('div');
+
+                        // 1. 强制锁死宽度：禁止横向拉长！
+                        // 使用原页面测量出的像素值
+                        div.style.width = state.width + 'px';
+
+                        // 2. 强制换行样式的核心组合
+                        div.style.whiteSpace = 'pre-wrap';   // 保留回车，自动换行
+                        div.style.wordBreak = 'break-word';  // 防止长单词撑破布局
+                        div.style.overflow = 'hidden';       // 防止溢出
+
+                        // 3. 复制字体样式，保证长得一样
+                        div.style.fontFamily = state.computedStyle.fontFamily;
+                        div.style.fontSize = state.computedStyle.fontSize;
+                        div.style.lineHeight = state.computedStyle.lineHeight;
+                        div.style.color = state.computedStyle.color;
+                        div.style.padding = '0'; // 去除多余 padding，因为 wrapper 已经有了
+
+                        // 4. 填入真实内容
+                        // 如果内容为空，给个空格占位，防止高度塌陷
+                        div.innerText = state.value || ' ';
+
+                        // 5. 替换
+                        if (clonedTextarea.parentNode) {
+                            clonedTextarea.parentNode.replaceChild(div, clonedTextarea);
+                        }
+                    });
+
+                    // 隐藏底部的按钮栏，截图更好看
+                    const controls = clonedDoc.querySelector('.global-row-controls');
+                    if (controls) controls.style.display = 'none';
+
+                    // 隐藏菜单
+                    const menu = clonedDoc.querySelector('.dropdown-menu');
+                    if (menu) menu.style.display = 'none';
+                },
+
+                scrollX: 0,
+                scrollY: 0,
+                width: fullWidth,
+                height: fullHeight,
+                windowWidth: fullWidth,
+                windowHeight: fullHeight,
                 backgroundColor: "#f4f7f9",
-                ignoreElements: (el) => false
+                scale: 2 // 提高清晰度 (2倍图)
             }).then(canvas => {
                 downloadFile(canvas.toDataURL("image/png"), `TRPG_Replay_${getTimeStr()}.png`);
-                btn.innerHTML = '&#8942;';
+                btn.innerText = originalText;
             }).catch(err => {
-                console.error(err);
-                btn.innerHTML = '&#8942;';
+                console.error("截图失败:", err);
+                alert("截图生成失败，请重试");
+                btn.innerText = originalText;
             });
         }
 
