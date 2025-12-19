@@ -482,8 +482,28 @@
             el.style.height = el.scrollHeight + 'px';
         }
 
-        function askAddColumn() { connection.invoke("AddColumn"); }
-        function askRemoveColumn() { if (confirm("确定删除最后一列吗？")) connection.invoke("RemoveLastColumn"); }
+        function askAddColumn() {
+            // 浏览器原生弹窗
+            let p = prompt("🔑 请输入管理密码以 [添加列]：");
+            if (p === null) return; // 取消
+            if (p === "0721") {
+                connection.invoke("AddColumn");
+            } else {
+                alert("🚫 密码错误！");
+            }
+        }
+
+        function askRemoveColumn() {
+            let p = prompt("🔑 请输入管理密码以 [删除列]：");
+            if (p === null) return;
+            if (p === "0721") {
+                if (confirm("⚠️ 确定要删除最后一列吗？该列所有数据将丢失！")) {
+                    connection.invoke("RemoveLastColumn");
+                }
+            } else {
+                alert("🚫 密码错误！");
+            }
+        }
         function askAddRow() { connection.invoke("RequestAddRow").catch(err => console.error(err)); }
         function onTyping(boxId) {
             const val = document.getElementById(boxId).value;
