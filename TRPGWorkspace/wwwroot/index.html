@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
-    <title>TRPG 实时协作工作台 - v1.1.1 (Mobile Ready)</title>
+    <title>TRPG 实时协作工作台 - v1.2.0</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.1, maximum-scale=5.0">
     <style>
         /* --- 1. 基础全局样式 --- */
@@ -11,13 +11,13 @@
             background: #f4f7f9; 
             font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif; 
             color: #333;
-            /* 核心修改 2：强制最小宽度，确保三列在手机上不挤压 */
             min-width: 1000px; 
             overflow-x: auto;
-            -webkit-text-size-adjust: 100%; /* 禁止移动端自动调整字体大小 */
+            -webkit-text-size-adjust: 100%;
         }
 
         :root {
+            /* 这里的 repeat(3, 1fr) 会在 JS 中被动态修改 */
             --grid-layout: repeat(3, 1fr) 50px;
             --row-even-bg: #ffffff; 
             --row-odd-bg: #edf0f3;  
@@ -55,6 +55,7 @@
             outline: none;
             text-align: center;
             letter-spacing: 1px;
+            transition: all 0.2s;
         }
 
         /* --- 3. 省略号菜单 --- */
@@ -81,20 +82,22 @@
             background: white;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             border-radius: 6px;
-            width: 150px;
+            width: 160px;
             z-index: 200;
+            padding: 5px 0;
         }
         .dropdown-menu button {
             width: 100%;
-            padding: 12px;
+            padding: 10px 15px;
             border: none;
             background: none;
-            color: #e74c3c;
+            color: #444;
             font-size: 13px;
-            font-weight: bold;
             cursor: pointer;
             text-align: left;
         }
+        .dropdown-menu button:hover { background: #f8f9fa; }
+        .dropdown-menu .danger-btn { color: #e74c3c; font-weight: bold; }
 
         /* --- 4. 核心布局网格 --- */
         .main-workspace {
@@ -133,7 +136,7 @@
 
         /* --- 6. 右侧窄版身份标签 --- */
         .row-label {
-            grid-column: 4;
+            grid-column-end: -1; /* 始终位于最后一列 */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -169,39 +172,23 @@
         }
         .box-wrapper:hover .del-btn { opacity: 1; }
 
-        /* 移动端特别优化：点击反馈 */
-        @media (hover: none) {
-            .del-btn { opacity: 0.5; } /* 移动端没有悬停，让删除键半透明可见 */
-        }
-        /* --- 手机端字体间距微调 --- */
         @media (max-width: 768px) {
-            textarea {
-                /* 将手机端的字间距稍微调小，由 0.5px 降至 0.1px */
-                letter-spacing: 0.1px; 
-                /* 保持行高不变，确保可读性 */
-                line-height: 1.8;
-            }
-            
-            .column-title-input {
-                /* 标题字间距也同步微调 */
-                letter-spacing: 0px;
-            }
+            textarea { letter-spacing: 0.1px; }
+            .column-title-input { letter-spacing: 0px; }
+            .del-btn { opacity: 0.5; }
         }
-
-
     </style>
 </head>
 <body onclick="closeMenu(event)">
 
     <div class="top-nav">
-        <div class="nav-item"><input type="text" class="column-title-input" id="title-col-1" value="剧情/世界观" oninput="onTitleChange('col-1')"></div>
-        <div class="nav-item"><input type="text" class="column-title-input" id="title-col-2" value="人物/状态" oninput="onTitleChange('col-2')"></div>
-        <div class="nav-item"><input type="text" class="column-title-input" id="title-col-3" value="记录/备忘" oninput="onTitleChange('col-3')"></div>
-        
         <div class="menu-container">
             <button class="ellipsis-btn" onclick="toggleMenu(event)">&#8942;</button>
             <div class="dropdown-menu" id="moreMenu">
-                <button onclick="askClearAll()">清空全部数据</button>
+                <button onclick="askAddColumn()" style="color: #2ecc71;">+ 新增一列</button>
+                <button onclick="askRemoveColumn()" style="color: #e67e22;">- 删减最后一列</button>
+                <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
+                <button class="danger-btn" onclick="askClearAll()">清空全部数据</button>
             </div>
         </div>
     </div>
@@ -211,13 +198,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     
     <script>
-        // JS 逻辑保持不变...
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/workspaceHub")
             .withAutomaticReconnect()
             .build();
 
-        let columnCounts = { "col-1": 0, "col-2": 0, "col-3": 0 };
+        let currentColumns = []; 
+        let columnCounts = {};
 
         function toggleMenu(e) {
             e.stopPropagation();
@@ -228,11 +215,45 @@
             document.getElementById('moreMenu').style.display = 'none';
         }
 
-        function renderBox(columnId, boxId, content = "") {
+        // --- 核心：加载整个布局 ---
+        connection.on("LoadWorkspace", (columns, boxes) => {
+            currentColumns = columns;
+            const grid = document.getElementById("main-grid");
+            const nav = document.querySelector('.top-nav');
+            const menuContainer = document.querySelector('.menu-container');
+
+            grid.innerHTML = "";
+            columnCounts = {};
+            
+            // 动态设置 CSS 变量
+            document.documentElement.style.setProperty('--grid-layout', `repeat(${columns.length}, 1fr) 50px`);
+
+            // 动态生成标题输入框
+            nav.querySelectorAll('.nav-item').forEach(el => el.remove());
+            columns.forEach(col => {
+                columnCounts[col.id] = 0;
+                const item = document.createElement('div');
+                item.className = 'nav-item';
+                item.innerHTML = `<input type="text" class="column-title-input" id="title-${col.id}" value="${col.title}" oninput="onTitleChange('${col.id}')">`;
+                nav.insertBefore(item, menuContainer);
+            });
+
+            // 渲染格子
+            boxes.sort((a,b) => a.id.localeCompare(b.id)).forEach(b => {
+                const colIndex = columns.findIndex(c => c.id === b.columnId) + 1;
+                if (colIndex > 0) renderBox(b.columnId, b.id, b.content, colIndex);
+            });
+
+            // 初始化加号
+            columns.forEach((col, index) => {
+                updateAddTrigger(col.id, index + 1, columnCounts[col.id] + 1);
+            });
+        });
+
+        function renderBox(columnId, boxId, content, colIndex) {
             const grid = document.getElementById("main-grid");
             columnCounts[columnId]++;
-            const rowIndex = columnCounts[columnId]; 
-            const colIndex = columnId === 'col-1' ? 1 : (columnId === 'col-2' ? 2 : 3);
+            const rowIndex = columnCounts[columnId];
 
             updateRowLabel(rowIndex);
 
@@ -244,7 +265,7 @@
             const delBtn = document.createElement("button");
             delBtn.className = "del-btn";
             delBtn.innerHTML = "&times;";
-            delBtn.onclick = () => { if(confirm("删除？")) connection.invoke("RequestDeleteBox", boxId); };
+            delBtn.onclick = () => { if(confirm("确定删除这个格子？")) connection.invoke("RequestDeleteBox", boxId); };
 
             const textarea = document.createElement("textarea");
             textarea.id = boxId;
@@ -293,19 +314,16 @@
             el.style.height = el.scrollHeight + 'px';
         }
 
-        connection.on("LoadExistingBoxes", (boxes, titles) => {
-            clearLocalWorkspace();
-            if (titles) {
-                titles.forEach(t => {
-                    const input = document.getElementById("title-" + t.id);
-                    if (input) input.value = t.title;
-                });
-            }
-            boxes.sort((a,b) => a.id.localeCompare(b.id)).forEach(b => renderBox(b.columnId, b.id, b.content));
-        });
+        // --- 指令发送 ---
+        function askAddColumn() { connection.invoke("AddColumn"); }
+        function askRemoveColumn() { if(confirm("确定删除最后一列吗？")) connection.invoke("RemoveLastColumn"); }
+        function askAddBox(columnId) { const id = "box_" + Date.now(); connection.invoke("RequestAddBox", columnId, id); }
+        function onTyping(boxId) { const val = document.getElementById(boxId).value; connection.invoke("SendTextUpdate", boxId, val); }
+        function onTitleChange(columnId) { const val = document.getElementById("title-" + columnId).value; connection.invoke("UpdateColumnTitle", columnId, val); }
+        function askClearAll() { if (confirm("确定清空全部数据？")) connection.invoke("ClearAllBoxes"); }
 
-        connection.on("OnBoxAdded", (columnId, boxId) => renderBox(columnId, boxId, ""));
-        connection.on("OnBoxDeleted", (boxId) => location.reload());
+        // --- 信号监听 ---
+        connection.on("OnLayoutUpdated", () => location.reload());
         connection.on("OnTextUpdated", (boxId, content) => {
             const el = document.getElementById(boxId);
             if (el) { el.value = content; autoResize(el); }
@@ -314,35 +332,8 @@
             const input = document.getElementById("title-" + columnId);
             if (input) input.value = newTitle;
         });
-        connection.on("OnWorkspaceCleared", () => location.reload());
 
-        function clearLocalWorkspace() {
-            columnCounts = { "col-1": 0, "col-2": 0, "col-3": 0 };
-            document.getElementById("main-grid").innerHTML = "";
-            updateAddTrigger('col-1', 1, 1); updateAddTrigger('col-2', 2, 1); updateAddTrigger('col-3', 3, 1);
-        }
-
-        function askAddBox(columnId) {
-            const id = "box_" + Date.now();
-            connection.invoke("RequestAddBox", columnId, id);
-        }
-        function onTyping(boxId) {
-            const val = document.getElementById(boxId).value;
-            connection.invoke("SendTextUpdate", boxId, val);
-        }
-        function onTitleChange(columnId) {
-            const newTitle = document.getElementById("title-" + columnId).value;
-            connection.invoke("UpdateColumnTitle", columnId, newTitle);
-        }
-        function askClearAll() {
-            if (confirm("清空全部？")) connection.invoke("ClearAllBoxes");
-        }
-
-        connection.start().then(() => {
-            updateAddTrigger('col-1', 1, 1);
-            updateAddTrigger('col-2', 2, 1);
-            updateAddTrigger('col-3', 3, 1);
-        });
+        connection.start().catch(err => console.error(err));
     </script>
 </body>
 </html>

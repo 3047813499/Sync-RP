@@ -1,65 +1,45 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
+
 public class WorkspaceHub : Hub
 {
 	private readonly AppDbContext _db;
+	public WorkspaceHub(AppDbContext db) => _db = db;
 
-	// 通过构造函数注入数据库上下文
-	public WorkspaceHub(AppDbContext db)
-	{
-		_db = db;
-	}
-
-	// 当用户打开网页连接成功时自动调用
+	// 1. 用户连接时加载所有数据
 	public override async Task OnConnectedAsync()
 	{
-		var allBoxes = await _db.Boxes.ToListAsync();
-		// 1. 获取所有存好的标题
-		var allTitles = await _db.ColumnTitles.ToListAsync();
-
-		// 2. 同时发送格子和标题给刚登录的人
-		await Clients.Caller.SendAsync("LoadExistingBoxes", allBoxes, allTitles);
-
+		var columns = await _db.Columns.OrderBy(c => c.Order).ToListAsync();
+		var boxes = await _db.Boxes.ToListAsync();
+		await Clients.Caller.SendAsync("LoadWorkspace", columns, boxes);
 		await base.OnConnectedAsync();
 	}
 
+	// 2. 增加格子 (修复点：添加后通知所有人更新布局)
 	public async Task RequestAddBox(string columnId, string boxId)
 	{
-		// 1. 保存到数据库
-		_db.Boxes.Add(new WorkspaceBox { Id = boxId, ColumnId = columnId });
+		var newBox = new WorkspaceBox { Id = boxId, ColumnId = columnId, Content = "" };
+		_db.Boxes.Add(newBox);
 		await _db.SaveChangesAsync();
 
-		// 2. 广播给所有人
-		await Clients.All.SendAsync("OnBoxAdded", columnId, boxId);
+		// 核心修改：让所有人重新加载布局，确保格子出现在正确的列
+		await Clients.All.SendAsync("OnLayoutUpdated");
 	}
 
+	// 3. 更新文字内容
 	public async Task SendTextUpdate(string boxId, string content)
 	{
-		// 1. 更新数据库
 		var box = await _db.Boxes.FindAsync(boxId);
 		if (box != null)
 		{
 			box.Content = content;
 			await _db.SaveChangesAsync();
+			await Clients.Others.SendAsync("OnTextUpdated", boxId, content);
 		}
-
-		// 2. 同步给其他人
-		await Clients.Others.SendAsync("OnTextUpdated", boxId, content);
 	}
 
-	// 一键清空所有格子
-	public async Task ClearAllBoxes()
-	{
-		// 1. 从数据库中删除所有记录
-		_db.Boxes.RemoveRange(_db.Boxes);
-		await _db.SaveChangesAsync();
-
-		// 2. 广播给所有人，执行前端的清空动作
-		await Clients.All.SendAsync("OnWorkspaceCleared");
-	}
-
-	// 删除单个格子 (可选，建议加上)
+	// 4. 删除格子
 	public async Task RequestDeleteBox(string boxId)
 	{
 		var box = await _db.Boxes.FindAsync(boxId);
@@ -67,24 +47,53 @@ public class WorkspaceHub : Hub
 		{
 			_db.Boxes.Remove(box);
 			await _db.SaveChangesAsync();
-			// 通知所有人移除这个格子的 UI
-			await Clients.All.SendAsync("OnBoxDeleted", boxId);
+			await Clients.All.SendAsync("OnLayoutUpdated");
 		}
 	}
-	// 用于同步列标题的改变
+
+	// 5. 增加一列
+	public async Task AddColumn()
+	{
+		var count = await _db.Columns.CountAsync();
+		var newId = "col_" + DateTime.Now.Ticks;
+		var newCol = new ColumnConfig { Id = newId, Title = "新竖列", Order = count };
+		_db.Columns.Add(newCol);
+		await _db.SaveChangesAsync();
+		await Clients.All.SendAsync("OnLayoutUpdated");
+	}
+
+	// 6. 减少最后一列
+	public async Task RemoveLastColumn()
+	{
+		var columns = await _db.Columns.OrderBy(c => c.Order).ToListAsync();
+		if (columns.Count <= 1) return;
+
+		var lastCol = columns.Last();
+		var associatedBoxes = _db.Boxes.Where(b => b.ColumnId == lastCol.Id);
+		_db.Boxes.RemoveRange(associatedBoxes);
+		_db.Columns.Remove(lastCol);
+
+		await _db.SaveChangesAsync();
+		await Clients.All.SendAsync("OnLayoutUpdated");
+	}
+
+	// 7. 更新标题
 	public async Task UpdateColumnTitle(string columnId, string newTitle)
 	{
-		// 1. 查找并更新数据库中的标题
-		var titleRecord = await _db.ColumnTitles.FindAsync(columnId);
-		if (titleRecord != null)
+		var col = await _db.Columns.FindAsync(columnId);
+		if (col != null)
 		{
-			titleRecord.Title = newTitle;
+			col.Title = newTitle;
 			await _db.SaveChangesAsync();
+			await Clients.Others.SendAsync("OnTitleUpdated", columnId, newTitle);
 		}
+	}
 
-		// 2. 广播给其他人实时显示
-		await Clients.Others.SendAsync("OnTitleUpdated", columnId, newTitle);
+	// 8. 清空数据
+	public async Task ClearAllBoxes()
+	{
+		_db.Boxes.RemoveRange(_db.Boxes);
+		await _db.SaveChangesAsync();
+		await Clients.All.SendAsync("OnLayoutUpdated");
 	}
 }
-
-

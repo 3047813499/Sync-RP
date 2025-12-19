@@ -7,20 +7,20 @@
       "RelativeMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|solutionrelative:trpgworkspace\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|c:\\users\\rts\\source\\repos\\trpgworkspace\\trpgworkspace\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|solutionrelative:trpgworkspace\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|c:\\users\\rts\\source\\repos\\trpgworkspace\\trpgworkspace\\workspacebox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|solutionrelative:trpgworkspace\\workspacebox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|c:\\users\\rts\\source\\repos\\trpgworkspace\\trpgworkspace\\workspacehub.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|solutionrelative:trpgworkspace\\workspacehub.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|c:\\users\\rts\\source\\repos\\trpgworkspace\\trpgworkspace\\columntitle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|solutionrelative:trpgworkspace\\columntitle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|c:\\users\\rts\\source\\repos\\trpgworkspace\\trpgworkspace\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|solutionrelative:trpgworkspace\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|c:\\users\\rts\\source\\repos\\trpgworkspace\\trpgworkspace\\workspacebox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|solutionrelative:trpgworkspace\\workspacebox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|c:\\users\\rts\\source\\repos\\trpgworkspace\\trpgworkspace\\columntitle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{AB64BB46-0624-43FE-8CAD-98ACEA4534E9}|TRPGWorkspace\\TRPGWorkspace.csproj|solutionrelative:trpgworkspace\\columntitle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -38,7 +38,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "ColumnTitle.cs",
               "DocumentMoniker": "C:\\Users\\RTS\\source\\repos\\TRPGWorkspace\\TRPGWorkspace\\ColumnTitle.cs",
               "RelativeDocumentMoniker": "TRPGWorkspace\\ColumnTitle.cs",
@@ -50,27 +50,29 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "AppDbContext.cs",
               "DocumentMoniker": "C:\\Users\\RTS\\source\\repos\\TRPGWorkspace\\TRPGWorkspace\\AppDbContext.cs",
               "RelativeDocumentMoniker": "TRPGWorkspace\\AppDbContext.cs",
               "ToolTip": "C:\\Users\\RTS\\source\\repos\\TRPGWorkspace\\TRPGWorkspace\\AppDbContext.cs",
               "RelativeToolTip": "TRPGWorkspace\\AppDbContext.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAkAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAbAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-19T07:22:55.157Z"
+              "WhenOpened": "2025-12-19T07:22:55.157Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 1,
               "Title": "WorkspaceBox.cs",
               "DocumentMoniker": "C:\\Users\\RTS\\source\\repos\\TRPGWorkspace\\TRPGWorkspace\\WorkspaceBox.cs",
               "RelativeDocumentMoniker": "TRPGWorkspace\\WorkspaceBox.cs",
               "ToolTip": "C:\\Users\\RTS\\source\\repos\\TRPGWorkspace\\TRPGWorkspace\\WorkspaceBox.cs",
               "RelativeToolTip": "TRPGWorkspace\\WorkspaceBox.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAfAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAPAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-19T07:17:21.474Z"
+              "WhenOpened": "2025-12-19T07:17:21.474Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -80,7 +82,7 @@
               "RelativeDocumentMoniker": "TRPGWorkspace\\Program.cs",
               "ToolTip": "C:\\Users\\RTS\\source\\repos\\TRPGWorkspace\\TRPGWorkspace\\Program.cs",
               "RelativeToolTip": "TRPGWorkspace\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAxAAAAAAAAAA==",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAAAB4AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-12-18T18:20:01.248Z",
               "EditorCaption": ""
@@ -93,9 +95,10 @@
               "RelativeDocumentMoniker": "TRPGWorkspace\\WorkspaceHub.cs",
               "ToolTip": "C:\\Users\\RTS\\source\\repos\\TRPGWorkspace\\TRPGWorkspace\\WorkspaceHub.cs",
               "RelativeToolTip": "TRPGWorkspace\\WorkspaceHub.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-18T18:19:23.793Z"
+              "WhenOpened": "2025-12-18T18:19:23.793Z",
+              "EditorCaption": ""
             }
           ]
         }

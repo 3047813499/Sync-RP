@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TRPGWorkspace")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+391f13473777b9f3ddde94f403b755969a66c3ef")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9dde7ff6ccc0d000a9cc342fec0d814cb8869c64")]
 [assembly: System.Reflection.AssemblyProductAttribute("TRPGWorkspace")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TRPGWorkspace")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

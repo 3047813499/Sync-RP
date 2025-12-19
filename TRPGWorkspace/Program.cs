@@ -14,13 +14,16 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
 	var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+	// 确保数据库已创建
 	db.Database.EnsureCreated();
-	if (!db.ColumnTitles.Any())
+
+	// 如果列配置表是空的，初始化默认三列
+	if (!db.Columns.Any())
 	{
-		db.ColumnTitles.AddRange(
-			new ColumnTitle { Id = "col-1", Title = "1" },
-			new ColumnTitle { Id = "col-2", Title = "2" },
-			new ColumnTitle { Id = "col-3", Title = "3" }
+		db.Columns.AddRange(
+			new ColumnConfig { Id = "col-1", Title = "剧情/世界观", Order = 0 },
+			new ColumnConfig { Id = "col-2", Title = "人物/状态", Order = 1 },
+			new ColumnConfig { Id = "col-3", Title = "记录/备忘", Order = 2 }
 		);
 		db.SaveChanges();
 	}
