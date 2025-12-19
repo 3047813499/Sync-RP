@@ -155,3 +155,4 @@ C:\Users\RTS\source\repos\TRPGWorkspace\TRPGWorkspace\bin\Debug\net8.0\runtimes\
 C:\Users\RTS\source\repos\TRPGWorkspace\TRPGWorkspace\bin\Debug\net8.0\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll
 C:\Users\RTS\source\repos\TRPGWorkspace\TRPGWorkspace\obj\Debug\net8.0\TRPGWorkspace.csproj.AssemblyReference.cache
 C:\Users\RTS\source\repos\TRPGWorkspace\TRPGWorkspace\obj\Debug\net8.0\TRPGWork.D592D49A.Up2Date
+C:\Users\RTS\source\repos\TRPGWorkspace\TRPGWorkspace\obj\Debug\net8.0\TRPGWorkspace.sourcelink.json
