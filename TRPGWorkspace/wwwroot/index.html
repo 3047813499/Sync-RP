@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
-    <title>TRPG 实时协作工作台 - v1.3.10 Static Nav & Embedded Button</title>
+    <title>TRPG 实时协作工作台 - v1.4.2 Script Logic Fix</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.1, maximum-scale=5.0">
     <style>
         /* --- 1. 基础全局样式 --- */
@@ -22,15 +22,13 @@
             --border-color: #d1d9e0;
         }
 
-        /* --- 2. 顶部导航栏 (修改：不再悬浮) --- */
+        /* --- 2. 顶部导航栏 --- */
         .top-nav {
             display: grid;
             grid-template-columns: var(--grid-layout);
             column-gap: 20px;
             background: #212529;
             color: white;
-            /* 修改点：删除了 position: sticky; top: 0; */
-            /* 现在它只是普通的一行，会随页面滚动而移出视野 */
             position: relative;
             z-index: 100;
             padding: 0 20px;
@@ -92,20 +90,24 @@
             background: white;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             border-radius: 6px;
-            width: 160px;
+            width: 180px;
             z-index: 200;
             padding: 5px 0;
+            text-align: left;
         }
 
             .dropdown-menu button {
                 width: 100%;
-                padding: 10px 15px;
+                padding: 12px 15px;
                 border: none;
                 background: none;
                 color: #444;
-                font-size: 13px;
+                font-size: 14px;
                 cursor: pointer;
                 text-align: left;
+                display: flex;
+                align-items: center;
+                gap: 10px;
             }
 
                 .dropdown-menu button:hover {
@@ -184,18 +186,16 @@
         }
 
         /* --- 7. 底部全局控制按钮 (嵌入表格版) --- */
-        /* 这个容器现在是 grid 的一个子元素 */
         .global-row-controls {
-            /* 核心修改：让它跨越所有列（从第一列到最后一列） */
             grid-column: 1 / -1;
-            width: 100%; /* 占满 Grid 给它的空间 */
+            width: 100%;
             padding: 30px 0 100px 0;
             display: flex;
             justify-content: center;
         }
 
         .add-row-btn {
-            width: 100%; /* 撑满这一行 */
+            width: 100%;
             height: 60px;
             background: #ffffff;
             border: 2px dashed #d1d9e0;
@@ -241,8 +241,13 @@
         <div class="menu-container">
             <button class="ellipsis-btn" onclick="toggleMenu(event)">&#8942;</button>
             <div class="dropdown-menu" id="moreMenu">
-                <button onclick="askAddColumn()" style="color: #2ecc71;">+ 新增一列</button>
-                <button onclick="askRemoveColumn()" style="color: #e67e22;">- 删减最后一列</button>
+                <button onclick="askAddColumn()" style="color: #2ecc71;">➕ 新增一列</button>
+                <button onclick="askRemoveColumn()" style="color: #e67e22;">➖ 删减最后一列</button>
+                <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
+
+                <button onclick="exportImage()" style="color: #3498db;">📸 导出为图片 (长截图)</button>
+                <button onclick="exportTxt()" style="color: #9b59b6;">📝 导出为剧本 (.txt)</button>
+                <button onclick="exportJson()" style="color: #34495e;">💾 导出为备份 (.json)</button>
             </div>
         </div>
     </div>
@@ -251,14 +256,132 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
+        // --- 1. 导出图片逻辑 ---
+        function exportImage() {
+            closeMenu();
+            const btn = document.querySelector('.ellipsis-btn');
+            btn.innerText = '⏳';
+
+            html2canvas(document.body, {
+                scrollX: 0, scrollY: 0,
+                windowWidth: document.body.scrollWidth,
+                windowHeight: document.body.scrollHeight,
+                backgroundColor: "#f4f7f9",
+                ignoreElements: (el) => false
+            }).then(canvas => {
+                downloadFile(canvas.toDataURL("image/png"), `TRPG_Replay_${getTimeStr()}.png`);
+                btn.innerHTML = '&#8942;';
+            }).catch(err => {
+                console.error(err);
+                btn.innerHTML = '&#8942;';
+            });
+        }
+
+        // --- 2. 导出剧本 (.txt) - 核心逻辑修正版 ---
+        function exportTxt() {
+            closeMenu();
+
+            // A. 预处理：计算每个格子的行号和列信息
+            // 必须严格复刻 renderBox 的计数逻辑，否则行号会对不上
+            let boxPositionMap = []; // { rowIndex, colId, content }
+            let tempColCounts = {};
+            currentColumns.forEach(c => tempColCounts[c.id] = 0);
+
+            // 注意：依赖 currentBoxes 的顺序，假设后端按插入/ID顺序返回
+            currentBoxes.forEach(b => {
+                tempColCounts[b.columnId] = (tempColCounts[b.columnId] || 0) + 1;
+                boxPositionMap.push({
+                    rowIndex: tempColCounts[b.columnId],
+                    colId: b.columnId,
+                    content: b.content
+                });
+            });
+
+            // 获取总行数
+            let maxRow = 0;
+            Object.values(tempColCounts).forEach(c => { if (c > maxRow) maxRow = c; });
+
+            let txt = `=== TRPG 跑团记录 ===\n导出时间: ${new Date().toLocaleString()}\n\n`;
+
+            // B. 遍历回合：步长为 2 (Line 1 & 2 = Round 1)
+            for (let r = 1; r <= maxRow; r += 2) {
+                let roundNum = (r + 1) / 2;
+                let hasContent = false;
+                let roundTxt = `--- 第 ${roundNum} 回合 ---\n\n`;
+
+                // --- 奇数行 (r)：守秘人 ---
+                // 找出这一行所有有字的格子，拼接起来
+                let kpTexts = boxPositionMap
+                    .filter(b => b.rowIndex === r && b.content && b.content.trim())
+                    .map(b => b.content.trim());
+
+                if (kpTexts.length > 0) {
+                    roundTxt += `【守秘人】:\n${kpTexts.join("\n")}\n\n`;
+                    hasContent = true;
+                }
+
+                // --- 偶数行 (r+1)：调查员 ---
+                let plRowIndex = r + 1;
+                // 按列的顺序遍历，这样对话顺序也是从左到右
+                currentColumns.forEach(col => {
+                    let box = boxPositionMap.find(b => b.rowIndex === plRowIndex && b.colId === col.id);
+                    if (box && box.content && box.content.trim()) {
+                        roundTxt += `【${col.title}】:\n${box.content.trim()}\n\n`;
+                        hasContent = true;
+                    }
+                });
+
+                if (hasContent) {
+                    txt += roundTxt;
+                }
+            }
+
+            // C. 下载
+            const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            downloadFile(url, `TRPG_Novel_${getTimeStr()}.txt`);
+        }
+
+        // --- 3. 导出备份 (.json) ---
+        function exportJson() {
+            closeMenu();
+            const data = {
+                version: "1.4.1",
+                timestamp: new Date().toISOString(),
+                columns: currentColumns,
+                boxes: currentBoxes
+            };
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            downloadFile(url, `TRPG_Data_${getTimeStr()}.json`);
+        }
+
+        // --- 辅助工具 ---
+        function getTimeStr() {
+            return new Date().toISOString().slice(0, 19).replace(/[-T:]/g, "");
+        }
+
+        function downloadFile(url, filename) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- SignalR 与渲染逻辑 ---
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/workspaceHub")
             .withAutomaticReconnect()
             .build();
 
         let currentColumns = [];
+        let currentBoxes = []; // 全局保存数据
         let columnCounts = {};
         let renderedRows = new Set();
 
@@ -268,11 +391,14 @@
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         }
         function closeMenu(e) {
+            if (e) e.stopPropagation();
             document.getElementById('moreMenu').style.display = 'none';
         }
 
         connection.on("LoadWorkspace", (columns, boxes) => {
             currentColumns = columns;
+            currentBoxes = boxes; // 保存数据
+
             const grid = document.getElementById("main-grid");
             const nav = document.querySelector('.top-nav');
             const menuContainer = document.querySelector('.menu-container');
@@ -281,10 +407,8 @@
             columnCounts = {};
             renderedRows.clear();
 
-            // 布局：280px 宽列
             document.documentElement.style.setProperty('--grid-layout', `repeat(${columns.length}, minmax(280px, 1fr)) 50px`);
 
-            // 导航栏处理
             nav.querySelectorAll('.nav-item').forEach(el => el.remove());
             columns.forEach(col => {
                 columnCounts[col.id] = 0;
@@ -294,29 +418,22 @@
                 nav.insertBefore(item, menuContainer);
             });
 
-            // 渲染格子
             boxes.forEach(b => {
                 const colIndex = columns.findIndex(c => c.id === b.columnId) + 1;
                 if (colIndex > 0) renderBox(b.columnId, b.id, b.content, colIndex);
             });
 
-            // --- 核心修改：加载完格子后，把大按钮作为 Grid 的最后一个元素加上去 ---
             renderGlobalButton();
         });
 
         function renderGlobalButton() {
             const grid = document.getElementById("main-grid");
-
-            // 创建按钮容器
             const container = document.createElement("div");
             container.className = "global-row-controls";
-
-            // 创建按钮
             const btn = document.createElement("button");
             btn.className = "add-row-btn";
             btn.onclick = askAddRow;
             btn.innerHTML = "<span>+</span> 批量添加 10 行剧情 (同步所有列)";
-
             container.appendChild(btn);
             grid.appendChild(container);
         }
@@ -368,12 +485,10 @@
         function askAddColumn() { connection.invoke("AddColumn"); }
         function askRemoveColumn() { if (confirm("确定删除最后一列吗？")) connection.invoke("RemoveLastColumn"); }
         function askAddRow() { connection.invoke("RequestAddRow").catch(err => console.error(err)); }
-
         function onTyping(boxId) {
             const val = document.getElementById(boxId).value;
             connection.invoke("SendTextUpdate", boxId, val);
         }
-
         function onTitleChange(columnId) {
             const val = document.getElementById("title-" + columnId).value;
             connection.invoke("UpdateColumnTitle", columnId, val);
