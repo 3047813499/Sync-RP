@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
-    <title>TRPG 实时协作工作台 - Beta 1.6.5</title>
+    <title>TRPG 实时协作工作台 - v1.1.1 (Mobile Ready)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.1, maximum-scale=5.0">
     <style>
         /* --- 1. 基础全局样式 --- */
         body { 
@@ -10,10 +11,13 @@
             background: #f4f7f9; 
             font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif; 
             color: #333;
+            /* 核心修改 2：强制最小宽度，确保三列在手机上不挤压 */
+            min-width: 1000px; 
+            overflow-x: auto;
+            -webkit-text-size-adjust: 100%; /* 禁止移动端自动调整字体大小 */
         }
 
         :root {
-            /* 核心修改：将右侧宽度从 120px 缩小至 50px */
             --grid-layout: repeat(3, 1fr) 50px;
             --row-even-bg: #ffffff; 
             --row-odd-bg: #edf0f3;  
@@ -53,7 +57,7 @@
             letter-spacing: 1px;
         }
 
-        /* --- 3. 省略号菜单样式 --- */
+        /* --- 3. 省略号菜单 --- */
         .menu-container {
             position: relative;
             display: flex;
@@ -68,11 +72,7 @@
             cursor: pointer;
             padding: 5px;
             line-height: 1;
-            transition: color 0.2s;
         }
-        .ellipsis-btn:hover { color: #fff; }
-
-        /* 隐藏的下拉菜单 */
         .dropdown-menu {
             display: none;
             position: absolute;
@@ -83,7 +83,6 @@
             border-radius: 6px;
             width: 150px;
             z-index: 200;
-            overflow: hidden;
         }
         .dropdown-menu button {
             width: 100%;
@@ -95,10 +94,6 @@
             font-weight: bold;
             cursor: pointer;
             text-align: left;
-            transition: background 0.2s;
-        }
-        .dropdown-menu button:hover {
-            background: #fff5f5;
         }
 
         /* --- 4. 核心布局网格 --- */
@@ -145,7 +140,7 @@
             writing-mode: vertical-rl;
             text-orientation: mixed;
             font-weight: bold;
-            letter-spacing: 4px; /* 缩小间距以适应窄列 */
+            letter-spacing: 4px;
             font-size: 12px;
             border: 1px solid var(--border-color);
             border-left: none;
@@ -173,6 +168,27 @@
             cursor: pointer; font-size: 18px; opacity: 0;
         }
         .box-wrapper:hover .del-btn { opacity: 1; }
+
+        /* 移动端特别优化：点击反馈 */
+        @media (hover: none) {
+            .del-btn { opacity: 0.5; } /* 移动端没有悬停，让删除键半透明可见 */
+        }
+        /* --- 手机端字体间距微调 --- */
+        @media (max-width: 768px) {
+            textarea {
+                /* 将手机端的字间距稍微调小，由 0.5px 降至 0.1px */
+                letter-spacing: 0.1px; 
+                /* 保持行高不变，确保可读性 */
+                line-height: 1.8;
+            }
+            
+            .column-title-input {
+                /* 标题字间距也同步微调 */
+                letter-spacing: 0px;
+            }
+        }
+
+
     </style>
 </head>
 <body onclick="closeMenu(event)">
@@ -195,6 +211,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     
     <script>
+        // JS 逻辑保持不变...
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/workspaceHub")
             .withAutomaticReconnect()
@@ -202,7 +219,6 @@
 
         let columnCounts = { "col-1": 0, "col-2": 0, "col-3": 0 };
 
-        // --- 菜单逻辑 ---
         function toggleMenu(e) {
             e.stopPropagation();
             const menu = document.getElementById('moreMenu');
@@ -212,7 +228,6 @@
             document.getElementById('moreMenu').style.display = 'none';
         }
 
-        // --- 渲染逻辑 ---
         function renderBox(columnId, boxId, content = "") {
             const grid = document.getElementById("main-grid");
             columnCounts[columnId]++;
@@ -278,7 +293,6 @@
             el.style.height = el.scrollHeight + 'px';
         }
 
-        // --- SignalR 监听 ---
         connection.on("LoadExistingBoxes", (boxes, titles) => {
             clearLocalWorkspace();
             if (titles) {
